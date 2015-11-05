@@ -80,6 +80,8 @@ class Word2Vec extends Serializable with Logging {
   private var numIterations = 1
   private var seed = Utils.random.nextLong()
   private var minCount = 5
+  private var allowedVocab = Set("")
+  private var restrictVocab = false
 
   /**
    * Sets vector size (default: 100).
@@ -138,6 +140,16 @@ class Word2Vec extends Serializable with Logging {
     this
   }
 
+  /**
+   * Sets allowedVocab, the list of words to score. Words not in the set will not be included in
+   * the word2vec model's vocabulary (default: include all words).
+   */
+  def setAllowedVocab(vocab: Set[String]): this.type = {
+    this.restrictVocab = true
+    this.allowedVocab = vocab
+    this
+  }
+
   private val EXP_TABLE_SIZE = 1000
   private val MAX_EXP = 6
   private val MAX_CODE_LENGTH = 40
@@ -160,13 +172,15 @@ class Word2Vec extends Serializable with Logging {
         new Array[Int](MAX_CODE_LENGTH),
         new Array[Int](MAX_CODE_LENGTH),
         0))
+      .filter(vw => restrictVocab && allowedVocab(vw.word))
       .filter(_.cn >= minCount)
       .collect()
       .sortWith((a, b) => a.cn > b.cn)
 
     vocabSize = vocab.length
     require(vocabSize > 0, "The vocabulary size should be > 0. You may need to check " +
-      "the setting of minCount, which could be large enough to remove all your words in sentences.")
+      "the setting of minCount, which could be large enough to remove all your words in sentences." + 
+      "Also, check that you didn't restrict vocab with the setting of allowedVocab.")
 
     var a = 0
     while (a < vocabSize) {
